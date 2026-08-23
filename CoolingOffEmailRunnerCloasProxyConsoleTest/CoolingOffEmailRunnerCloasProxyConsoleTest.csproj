@@ -1,14 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Legacy (non-SDK) project format, on purpose - matches CoolingOffEmailRunnerConsole,
-  SendEmailAndText and CoolingOffEmailRunnerCloasProxy so the whole family of
-  projects builds identically under MSBuild 16.x, 17.x and `dotnet build`.
-
-  This is a standalone diagnostic console app: it POSTs a CLOAS SOAP request
-  (built from the same template/placeholders CoolingOffEmailRunnerConsole's
-  CloasService uses) to a deployed CoolingOffEmailRunnerCloasProxy instance,
-  and logs the result - see README.md.
--->
 <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
 
@@ -27,7 +17,6 @@
     <Prefer32Bit>false</Prefer32Bit>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
-    <!-- Consume NuGet packages via PackageReference rather than packages.config. -->
     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
   </PropertyGroup>
 
@@ -71,11 +60,6 @@
 
   <ItemGroup>
     <PackageReference Include="log4net" Version="2.0.15" />
-    <!--
-      Supplies the .NET Framework 4.5.2 reference assemblies from NuGet. SDK-style
-      projects add this implicitly; legacy projects do not, so it is listed here.
-      Without it the build needs the 4.5.2 targeting pack installed locally.
-    -->
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net452" Version="1.0.3">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -88,7 +72,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- App.config drives the generated .exe.config; carries the test data. -->
     <None Include="App.config" />
   </ItemGroup>
 

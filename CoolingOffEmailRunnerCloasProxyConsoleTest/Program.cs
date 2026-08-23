@@ -13,11 +13,6 @@ using log4net.Config;
 
 namespace CoolingOffEmailRunnerCloasProxyConsoleTest
 {
-    // Standalone diagnostic tool: builds the same CLOAS SOAP envelope that
-    // CoolingOffEmailRunnerConsole's CloasService sends, POSTs it to a
-    // CoolingOffEmailRunnerCloasProxy IIS deployment (CloasProxy.ServiceUrl
-    // in App.config), and logs what came back - so the proxy's data
-    // integration can be validated without running the full email job.
     internal static class Program
     {
         private static readonly ILog Log = LogManager.GetLogger(typeof(Program));
@@ -134,9 +129,6 @@ namespace CoolingOffEmailRunnerCloasProxyConsoleTest
                 .Replace("{POLICIES}", policiesXml);
         }
 
-        // Best-effort parse of the CLOAS response shape, purely for readable
-        // console/log output - it does not need to be exhaustive since the
-        // raw body above is always printed too.
         private static void PrintParsedSummary(string responseXml, CloasProxyTestOptions options)
         {
             try

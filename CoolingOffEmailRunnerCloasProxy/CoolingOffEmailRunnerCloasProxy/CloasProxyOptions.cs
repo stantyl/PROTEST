@@ -2,9 +2,6 @@ using System.Configuration;
 
 namespace CoolingOffEmailRunnerCloasProxy
 {
-    // Reads straight from Web.config's <appSettings> on every access (no caching),
-    // so swapping CloasProxy.TargetServiceUrl only needs an app pool recycle -
-    // no rebuild or redeploy of this project or of CoolingOffEmailRunnerConsole.
     internal static class CloasProxyOptions
     {
         public static string TargetServiceUrl =>

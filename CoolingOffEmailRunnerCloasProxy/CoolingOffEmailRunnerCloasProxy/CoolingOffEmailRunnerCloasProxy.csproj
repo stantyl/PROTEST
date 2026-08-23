@@ -1,15 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Legacy (non-SDK) project format, on purpose - matches CoolingOffEmailRunnerConsole
-  and SendEmailAndText so the whole family of projects builds identically under
-  MSBuild 16.x, 17.x and `dotnet build`, without depending on the ASP.NET "Web
-  Application" project system (Microsoft.WebApplication.targets), which is only
-  guaranteed to be present where Visual Studio's web tooling is installed.
-
-  This project is a plain class library. It is hosted in IIS as a WCF service by
-  deploying its build output alongside Web.config and CloasService.svc into an
-  IIS site/application folder - see README.md.
--->
 <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
 
@@ -27,7 +16,6 @@
     <Deterministic>true</Deterministic>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
-    <!-- Consume NuGet packages via PackageReference rather than packages.config. -->
     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
   </PropertyGroup>
 
@@ -75,11 +63,6 @@
 
   <ItemGroup>
     <PackageReference Include="log4net" Version="2.0.15" />
-    <!--
-      Supplies the .NET Framework 4.5.2 reference assemblies from NuGet. SDK-style
-      projects add this implicitly; legacy projects do not, so it is listed here.
-      Without it the build needs the 4.5.2 targeting pack installed locally.
-    -->
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net452" Version="1.0.3">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
