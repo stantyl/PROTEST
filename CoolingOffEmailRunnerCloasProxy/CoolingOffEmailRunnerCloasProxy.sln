@@ -1,0 +1,21 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoolingOffEmailRunnerCloasProxy", "CoolingOffEmailRunnerCloasProxy\CoolingOffEmailRunnerCloasProxy.csproj", "{F11AC01F-E766-4E44-88FC-BB50AAA007E2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+		UAT2|Any CPU = UAT2|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F11AC01F-E766-4E44-88FC-BB50AAA007E2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F11AC01F-E766-4E44-88FC-BB50AAA007E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F11AC01F-E766-4E44-88FC-BB50AAA007E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F11AC01F-E766-4E44-88FC-BB50AAA007E2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F11AC01F-E766-4E44-88FC-BB50AAA007E2}.UAT2|Any CPU.ActiveCfg = UAT2|Any CPU
+		{F11AC01F-E766-4E44-88FC-BB50AAA007E2}.UAT2|Any CPU.Build.0 = UAT2|Any CPU
+	EndGlobalSection
+EndGlobal

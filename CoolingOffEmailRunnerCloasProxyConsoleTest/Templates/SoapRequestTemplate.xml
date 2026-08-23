@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="{XSI_NAMESPACE}" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Body>
+    <Policy xmlns="{CLOAS_NAMESPACE}">
+      <method>{METHOD_NAME}</method>
+      <systemId>{SYSTEM_ID}</systemId>
+      <userId>{USER_ID}</userId>
+      <systemReference>{SYSTEM_REFERENCE}</systemReference>
+      <policyRequest xmlns:d4p1="{CLOAS_POLICY_API_NAMESPACE}" xmlns:i="{XSI_NAMESPACE}">
+        <d4p1:PolicyRequestData i:type="d4p1:{METHOD_NAME}">
+          <d4p1:Policies xmlns:d6p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+{POLICIES}
+          </d6p1:Policies>
+        </d4p1:PolicyRequestData>
+      </policyRequest>
+    </Policy>
+  </soap:Body>
+</soap:Envelope>
