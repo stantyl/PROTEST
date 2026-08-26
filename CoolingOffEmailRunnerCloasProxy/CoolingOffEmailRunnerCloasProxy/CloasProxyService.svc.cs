@@ -22,15 +22,24 @@ namespace CoolingOffEmailRunnerCloasProxy
 
         public async Task<Stream> Process(Stream requestBody)
         {
+            // Capture the operation context up front: this method awaits a real
+            // network call, and WCF does not flow WebOperationContext.Current onto
+            // the thread-pool thread the continuation resumes on (the service is
+            // not in ASP.NET compatibility mode). Reading it after an await would
+            // throw NullReferenceException - including inside WriteError, which is
+            // why a forwarding failure previously surfaced as the generic
+            // "server encountered an error" instead of the real message.
+            var outgoingResponse = WebOperationContext.Current.OutgoingResponse;
+            var incomingHeaders = WebOperationContext.Current.IncomingRequest.Headers;
+
             var targetUrl = CloasProxyOptions.TargetServiceUrl;
             if (string.IsNullOrWhiteSpace(targetUrl))
             {
                 Log.Error("CloasProxy.TargetServiceUrl is not configured in Web.config.");
-                return WriteError(HttpStatusCode.InternalServerError,
+                return WriteError(outgoingResponse, HttpStatusCode.InternalServerError,
                     "CLOAS proxy is not configured (missing CloasProxy.TargetServiceUrl).");
             }
 
-            var incomingHeaders = WebOperationContext.Current.IncomingRequest.Headers;
             var soapAction = incomingHeaders["SOAPAction"];
             var contentType = incomingHeaders[HttpRequestHeader.ContentType] ?? "text/xml; charset=utf-8";
 
@@ -60,8 +69,8 @@ namespace CoolingOffEmailRunnerCloasProxy
                         var responseBytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
                         stopwatch.Stop();
 
-                        WebOperationContext.Current.OutgoingResponse.StatusCode = response.StatusCode;
-                        WebOperationContext.Current.OutgoingResponse.ContentType =
+                        outgoingResponse.StatusCode = response.StatusCode;
+                        outgoingResponse.ContentType =
                             response.Content.Headers.ContentType?.ToString() ?? "text/xml; charset=utf-8";
 
                         Log.InfoFormat("CLOAS target {0} responded {1} in {2}ms ({3} bytes)",
@@ -75,14 +84,14 @@ namespace CoolingOffEmailRunnerCloasProxy
             {
                 stopwatch.Stop();
                 Log.Error($"Error forwarding CLOAS request to {targetUrl} after {stopwatch.ElapsedMilliseconds}ms", ex);
-                return WriteError(HttpStatusCode.BadGateway, "CLOAS proxy error: " + ex.Message);
+                return WriteError(outgoingResponse, HttpStatusCode.BadGateway, "CLOAS proxy error: " + ex.Message);
             }
         }
 
-        private static Stream WriteError(HttpStatusCode statusCode, string message)
+        private static Stream WriteError(OutgoingWebResponseContext outgoingResponse, HttpStatusCode statusCode, string message)
         {
-            WebOperationContext.Current.OutgoingResponse.StatusCode = statusCode;
-            WebOperationContext.Current.OutgoingResponse.ContentType = "text/plain; charset=utf-8";
+            outgoingResponse.StatusCode = statusCode;
+            outgoingResponse.ContentType = "text/plain; charset=utf-8";
             return new MemoryStream(Encoding.UTF8.GetBytes(message));
         }
     }

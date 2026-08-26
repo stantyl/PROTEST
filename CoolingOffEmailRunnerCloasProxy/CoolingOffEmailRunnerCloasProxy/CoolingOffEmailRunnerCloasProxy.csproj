@@ -92,6 +92,7 @@
       <DependentUpon>CloasService.svc</DependentUpon>
     </Compile>
     <Compile Include="CloasProxyOptions.cs" />
+    <Compile Include="RawContentTypeMapper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
 
