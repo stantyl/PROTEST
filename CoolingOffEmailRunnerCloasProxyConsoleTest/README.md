@@ -4,11 +4,16 @@ A standalone console tool for testing a deployed
 [CoolingOffEmailRunnerCloasProxy](../CoolingOffEmailRunnerCloasProxy) IIS app
 end-to-end, without running the full `CoolingOffEmailRunnerConsole` job.
 
-It builds the same CLOAS SOAP request `CoolingOffEmailRunnerConsole`'s
-`CloasService` sends (same template, same placeholders), POSTs it to the
+It builds the CLOAS SOAP request the same way `CoolingOffEmailRunnerConsole`'s
+`CloasService` does - in code, via `BuildSoapEnvelopeWithPlans`, from an
+embedded template constant with no external template file - POSTs it to the
 proxy's `/CloasService.svc`, and logs what comes back: HTTP status, elapsed
 time, the raw response body, and a best-effort parsed summary (`ApiRc`,
 `ApiMsg`, and each `PlanCoolingOffDetailsResponse`).
+
+Before any network call it also parses the envelope it just built and aborts
+(exit code `2`) if it is not well-formed XML, so a broken template constant is
+caught locally rather than showing up as a confusing proxy failure.
 
 ## Configuring test data
 
@@ -19,8 +24,7 @@ All settings live in `App.config` -> `<appSettings>`:
 | `CloasProxy.ServiceUrl` | The proxy's own `CloasService.svc` URL to test (not the real CLOAS endpoint). |
 | `CloasProxy.TimeoutSeconds` | HTTP timeout for the call. |
 | `Cloas.TestPlanIds` | Comma-separated plan IDs to send as test data. |
-| `Cloas.SystemId`, `Cloas.UserId`, `Cloas.SystemReference`, `Cloas.SoapAction`, `Cloas.CloasNamespace`, `Cloas.CloasPolicyApiNamespace`, `Cloas.XsiNamespace`, `Cloas.MethodName` | Kept identical in shape to `CoolingOffEmailRunnerConsole`'s `CloasService:*` settings, so the request is representative of what production sends. |
-| `Cloas.TemplateFilePath` | Path (relative to the output folder) to the SOAP envelope template. |
+| `Cloas.SystemId`, `Cloas.UserId`, `Cloas.SystemReference`, `Cloas.SoapAction`, `Cloas.CloasNamespace`, `Cloas.CloasPolicyApiNamespace`, `Cloas.XsiNamespace`, `Cloas.MethodName` | Placeholder values substituted into the embedded envelope template - the same set `CoolingOffEmailRunnerConsole`'s `CloasService:*` settings feed into `BuildSoapEnvelopeWithPlans`, so the request is representative of what production sends. |
 
 Edit these, rebuild if needed, and run the exe - no code changes required to
 point at a different proxy environment or a different set of test plan IDs.

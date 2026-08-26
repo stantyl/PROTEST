@@ -1,6 +1,8 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 
+// Legacy projects do not generate assembly metadata at build time the way
+// SDK-style projects do, so the attributes are declared explicitly here.
 [assembly: AssemblyTitle("CoolingOffEmailRunnerCloasProxyConsoleTest")]
 [assembly: AssemblyProduct("CoolingOffEmailRunnerCloasProxyConsoleTest")]
 [assembly: AssemblyCompany("CoolingOffEmailRunnerCloasProxyConsoleTest")]

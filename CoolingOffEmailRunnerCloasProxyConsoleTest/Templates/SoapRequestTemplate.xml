@@ -10,7 +10,7 @@
         <d4p1:PolicyRequestData i:type="d4p1:{METHOD_NAME}">
           <d4p1:Policies xmlns:d6p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
 {POLICIES}
-          </d6p1:Policies>
+          </d4p1:Policies>
         </d4p1:PolicyRequestData>
       </policyRequest>
     </Policy>
