@@ -4,7 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.ServiceModel;
 using System.ServiceModel.Activation;
+using System.ServiceModel.Channels;
 using System.ServiceModel.Web;
 using System.Text;
 using System.Threading.Tasks;
@@ -42,8 +44,11 @@ namespace CoolingOffEmailRunnerCloasProxy
             // encountered an error" instead of the real message.
             var outgoingResponse = WebOperationContext.Current.OutgoingResponse;
 
-            var soapAction = ReadIncomingHeader("SOAPAction");
-            var contentType = ReadIncomingHeader("Content-Type");
+            var incoming = SnapshotIncomingHeaders();
+            LogIncomingHeaders(incoming);
+
+            var soapAction = incoming.Get("SOAPAction");
+            var contentType = incoming.Get("Content-Type");
             if (string.IsNullOrEmpty(contentType))
             {
                 contentType = "text/xml; charset=utf-8";
@@ -102,53 +107,105 @@ namespace CoolingOffEmailRunnerCloasProxy
             }
         }
 
-        // Reads an incoming HTTP request header. Prefers HttpContext (ASP.NET
-        // compatibility mode) since that is the actual request as IIS received it;
-        // falls back to the WebHttp operation context if HttpContext is somehow
-        // unavailable. Must be called synchronously, before the first await.
-        private static string ReadIncomingHeader(string name)
+        // A case-insensitive copy of the incoming HTTP request headers, taken from
+        // whichever source actually has them. Must be built synchronously, before
+        // the first await, while the request context is still on the thread.
+        private sealed class IncomingHeaders
         {
-            var request = HttpContext.Current?.Request;
-            if (request != null)
+            public string Source = "(none)";
+            public bool HttpContextAvailable;
+            public readonly WebHeaderCollection Values =
+                new WebHeaderCollection();
+
+            public string Get(string name) => Values[name];
+        }
+
+        private static IncomingHeaders SnapshotIncomingHeaders()
+        {
+            var result = new IncomingHeaders();
+
+            // 1. The real ASP.NET request (ASP.NET compatibility mode). This is
+            //    the request exactly as IIS received it and is the reliable path.
+            var httpRequest = HttpContext.Current?.Request;
+            result.HttpContextAvailable = httpRequest != null;
+            if (httpRequest != null)
             {
-                if (Log.IsDebugEnabled && !LoggedHeadersForThisRequest())
+                foreach (var key in httpRequest.Headers.AllKeys)
                 {
-                    var dump = string.Join(" | ",
-                        request.Headers.AllKeys.Select(k => k + ": " + request.Headers[k]));
-                    Log.Debug("Incoming request headers: " + dump);
+                    if (key != null)
+                    {
+                        result.Values[key] = httpRequest.Headers[key];
+                    }
                 }
 
-                return request.Headers[name];
+                if (result.Values.Count > 0)
+                {
+                    result.Source = "HttpContext.Request.Headers";
+                    return result;
+                }
             }
 
+            // 2. WCF's HttpRequestMessageProperty on the incoming message.
             try
             {
-                return WebOperationContext.Current?.IncomingRequest.Headers[name];
+                if (OperationContext.Current != null &&
+                    OperationContext.Current.IncomingMessageProperties.TryGetValue(
+                        HttpRequestMessageProperty.Name, out var raw) &&
+                    raw is HttpRequestMessageProperty httpProperty)
+                {
+                    foreach (var key in httpProperty.Headers.AllKeys)
+                    {
+                        if (key != null)
+                        {
+                            result.Values[key] = httpProperty.Headers[key];
+                        }
+                    }
+
+                    if (result.Values.Count > 0)
+                    {
+                        result.Source = "OperationContext HttpRequestMessageProperty";
+                        return result;
+                    }
+                }
             }
             catch (Exception ex)
             {
-                Log.Warn("Could not read incoming header '" + name + "' from WebOperationContext.", ex);
-                return null;
+                Log.Warn("Could not read HttpRequestMessageProperty headers.", ex);
             }
+
+            // 3. Last resort: the WebHttp operation context.
+            try
+            {
+                var webHeaders = WebOperationContext.Current?.IncomingRequest.Headers;
+                if (webHeaders != null)
+                {
+                    foreach (var key in webHeaders.AllKeys)
+                    {
+                        if (key != null)
+                        {
+                            result.Values[key] = webHeaders[key];
+                        }
+                    }
+
+                    result.Source = "WebOperationContext.IncomingRequest.Headers";
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("Could not read WebOperationContext headers.", ex);
+            }
+
+            return result;
         }
 
-        // Dump the header list at most once per request (ReadIncomingHeader is
-        // called twice). Uses HttpContext.Items as a per-request flag.
-        private static bool LoggedHeadersForThisRequest()
+        private static void LogIncomingHeaders(IncomingHeaders incoming)
         {
-            var items = HttpContext.Current?.Items;
-            if (items == null)
-            {
-                return false;
-            }
-
-            if (items.Contains("CloasProxy.HeadersLogged"))
-            {
-                return true;
-            }
-
-            items["CloasProxy.HeadersLogged"] = true;
-            return false;
+            var dump = string.Join(" | ",
+                incoming.Values.AllKeys.Select(k => k + ": " + incoming.Values[k]));
+            Log.InfoFormat(
+                "Incoming headers (HttpContext available: {0}, read from: {1}): {2}",
+                incoming.HttpContextAvailable, incoming.Source,
+                string.IsNullOrEmpty(dump) ? "(no headers found)" : dump);
         }
 
         private static Stream WriteError(OutgoingWebResponseContext outgoingResponse, HttpStatusCode statusCode, string message)
