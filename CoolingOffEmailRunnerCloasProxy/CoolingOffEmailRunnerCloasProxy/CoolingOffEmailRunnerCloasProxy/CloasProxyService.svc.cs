@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -34,14 +35,7 @@ namespace CoolingOffEmailRunnerCloasProxy
 
         public async Task<Stream> Process(Stream requestBody)
         {
-            // Capture everything that depends on the request/operation context up
-            // front: this method awaits a real network call with
-            // ConfigureAwait(false), so once execution resumes neither
-            // HttpContext.Current nor WebOperationContext.Current is guaranteed to
-            // still be available. Reading either after the await would throw
-            // NullReferenceException - including inside WriteError, which is why a
-            // forwarding failure previously surfaced as the generic "server
-            // encountered an error" instead of the real message.
+            
             var outgoingResponse = WebOperationContext.Current.OutgoingResponse;
 
             var incoming = SnapshotIncomingHeaders();
@@ -62,38 +56,54 @@ namespace CoolingOffEmailRunnerCloasProxy
                     "CLOAS proxy is not configured (missing CloasProxy.TargetServiceUrl).");
             }
 
-            byte[] requestBytes;
-            using (var buffer = new MemoryStream())
+        
+            byte[] requestBytes = new byte[0];
+            if (requestBody != null)
             {
-                await requestBody.CopyToAsync(buffer).ConfigureAwait(false);
-                requestBytes = buffer.ToArray();
+                using (var buffer = new MemoryStream())
+                {
+                    await requestBody.CopyToAsync(buffer).ConfigureAwait(false);
+                    requestBytes = buffer.ToArray();
+                }
             }
 
+           
+            var requestText = DecodeForLog(requestBytes, contentType);
+
             var stopwatch = Stopwatch.StartNew();
-            Log.InfoFormat("Forwarding CLOAS request to {0} ({1} bytes, SOAPAction: {2})",
-                targetUrl, requestBytes.Length, soapAction);
+            Log.InfoFormat("Forwarding CLOAS request to {0} ({1} bytes, Content-Type: {2}, SOAPAction: {3})",
+                targetUrl, requestBytes.Length, contentType, soapAction ?? "(none)");
 
             try
             {
+                using (var request = new HttpRequestMessage(HttpMethod.Post, targetUrl))
                 using (var content = new ByteArrayContent(requestBytes))
                 {
+                    content.Headers.Remove("Content-Type");
                     content.Headers.TryAddWithoutValidation("Content-Type", contentType);
                     if (!string.IsNullOrEmpty(soapAction))
                     {
-                        content.Headers.TryAddWithoutValidation("SOAPAction", soapAction);
+                        request.Headers.TryAddWithoutValidation("SOAPAction", soapAction);
                     }
 
-                    using (var response = await LazyHttpClient.Value.PostAsync(targetUrl, content).ConfigureAwait(false))
+                    request.Content = content;
+
+                    LogOutgoingRequest(request, requestText);
+
+                    using (var response = await LazyHttpClient.Value.SendAsync(request).ConfigureAwait(false))
                     {
                         var responseBytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
                         stopwatch.Stop();
 
-                        outgoingResponse.StatusCode = response.StatusCode;
-                        outgoingResponse.ContentType =
+                        var responseContentType =
                             response.Content.Headers.ContentType?.ToString() ?? "text/xml; charset=utf-8";
+
+                        outgoingResponse.StatusCode = response.StatusCode;
+                        outgoingResponse.ContentType = responseContentType;
 
                         Log.InfoFormat("CLOAS target {0} responded {1} in {2}ms ({3} bytes)",
                             targetUrl, (int)response.StatusCode, stopwatch.ElapsedMilliseconds, responseBytes.Length);
+                        LogResponse(response, DecodeForLog(responseBytes, responseContentType));
 
                         return new MemoryStream(responseBytes);
                     }
@@ -107,9 +117,6 @@ namespace CoolingOffEmailRunnerCloasProxy
             }
         }
 
-        // A case-insensitive copy of the incoming HTTP request headers, taken from
-        // whichever source actually has them. Must be built synchronously, before
-        // the first await, while the request context is still on the thread.
         private sealed class IncomingHeaders
         {
             public string Source = "(none)";
@@ -124,8 +131,6 @@ namespace CoolingOffEmailRunnerCloasProxy
         {
             var result = new IncomingHeaders();
 
-            // 1. The real ASP.NET request (ASP.NET compatibility mode). This is
-            //    the request exactly as IIS received it and is the reliable path.
             var httpRequest = HttpContext.Current?.Request;
             result.HttpContextAvailable = httpRequest != null;
             if (httpRequest != null)
@@ -145,7 +150,6 @@ namespace CoolingOffEmailRunnerCloasProxy
                 }
             }
 
-            // 2. WCF's HttpRequestMessageProperty on the incoming message.
             try
             {
                 if (OperationContext.Current != null &&
@@ -200,12 +204,85 @@ namespace CoolingOffEmailRunnerCloasProxy
 
         private static void LogIncomingHeaders(IncomingHeaders incoming)
         {
-            var dump = string.Join(" | ",
-                incoming.Values.AllKeys.Select(k => k + ": " + incoming.Values[k]));
+            var dump = string.Join(Environment.NewLine,
+                incoming.Values.AllKeys.Select(k => "    " + k + ": " + incoming.Values[k]));
             Log.InfoFormat(
-                "Incoming headers (HttpContext available: {0}, read from: {1}): {2}",
-                incoming.HttpContextAvailable, incoming.Source,
-                string.IsNullOrEmpty(dump) ? "(no headers found)" : dump);
+                "Incoming headers (HttpContext available: {0}, read from: {1}):{2}{3}",
+                incoming.HttpContextAvailable, incoming.Source, Environment.NewLine,
+                string.IsNullOrEmpty(dump) ? "    (no headers found)" : dump);
+        }
+
+        private static void LogOutgoingRequest(HttpRequestMessage request, string bodyText)
+        {
+            Log.InfoFormat(
+                "Outgoing request to CLOAS:{0}    {1} {2}{0}{3}{0}--- request body ({4} chars) ---{0}{5}{0}--- end request body ---",
+                Environment.NewLine,
+                request.Method, request.RequestUri,
+                FormatHeaders(request.Headers, request.Content?.Headers),
+                bodyText?.Length ?? 0,
+                bodyText);
+        }
+
+        private static void LogResponse(HttpResponseMessage response, string bodyText)
+        {
+            Log.InfoFormat(
+                "Response from CLOAS:{0}    {1} {2}{0}{3}{0}--- response body ({4} chars) ---{0}{5}{0}--- end response body ---",
+                Environment.NewLine,
+                (int)response.StatusCode, response.ReasonPhrase,
+                FormatHeaders(response.Headers, response.Content?.Headers),
+                bodyText?.Length ?? 0,
+                bodyText);
+        }
+
+        // Flattens request-level and content-level headers into one indented,
+        // multi-value-aware block for the log.
+        private static string FormatHeaders(
+            System.Net.Http.Headers.HttpHeaders headers,
+            System.Net.Http.Headers.HttpHeaders contentHeaders)
+        {
+            var lines = new List<string>();
+            foreach (var pair in AllPairs(headers).Concat(AllPairs(contentHeaders)))
+            {
+                lines.Add("    " + pair.Key + ": " + string.Join(", ", pair.Value));
+            }
+            return lines.Count == 0 ? "    (no headers)" : string.Join(Environment.NewLine, lines);
+        }
+
+        private static IEnumerable<KeyValuePair<string, IEnumerable<string>>> AllPairs(
+            System.Net.Http.Headers.HttpHeaders headers)
+        {
+            return headers == null
+                ? Enumerable.Empty<KeyValuePair<string, IEnumerable<string>>>()
+                : headers;
+        }
+
+        // Best-effort text view of a payload for logging. Only decodes when the
+        // Content-Type looks textual (xml / text / json / soap); binary payloads
+        // are summarised instead so the log stays readable.
+        private static string DecodeForLog(byte[] bytes, string contentType)
+        {
+            if (bytes == null || bytes.Length == 0)
+            {
+                return "(empty body)";
+            }
+
+            var ct = (contentType ?? string.Empty).ToLowerInvariant();
+            var looksTextual = ct.Contains("xml") || ct.Contains("text") ||
+                               ct.Contains("json") || ct.Contains("soap") || ct.Length == 0;
+            if (!looksTextual)
+            {
+                return $"({bytes.Length} bytes of {contentType})";
+            }
+
+            try
+            {
+                return Encoding.UTF8.GetString(bytes);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("Could not decode payload as UTF-8 for logging.", ex);
+                return $"({bytes.Length} bytes, not UTF-8 decodable)";
+            }
         }
 
         private static Stream WriteError(OutgoingWebResponseContext outgoingResponse, HttpStatusCode statusCode, string message)
