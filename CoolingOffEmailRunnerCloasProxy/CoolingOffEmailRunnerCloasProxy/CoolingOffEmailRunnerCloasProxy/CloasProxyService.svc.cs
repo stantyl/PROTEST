@@ -16,12 +16,7 @@ using log4net;
 
 namespace CoolingOffEmailRunnerCloasProxy
 {
-    // Runs inside the ASP.NET request pipeline so HttpContext.Current is populated:
-    // for a byte-for-byte HTTP proxy the incoming SOAPAction / Content-Type headers
-    // have to be read from the real HTTP request. WebOperationContext.Current
-    // .IncomingRequest.Headers is not reliably populated for a wildcard
-    // (Method = "*") raw-stream operation, which is why the forwarded request was
-    // reaching CLOAS without its SOAPAction header.
+
     [AspNetCompatibilityRequirements(RequirementsMode = AspNetCompatibilityRequirementsMode.Required)]
     public class CloasProxyService : ICloasProxyService
     {
@@ -256,9 +251,6 @@ namespace CoolingOffEmailRunnerCloasProxy
                 : headers;
         }
 
-        // Best-effort text view of a payload for logging. Only decodes when the
-        // Content-Type looks textual (xml / text / json / soap); binary payloads
-        // are summarised instead so the log stays readable.
         private static string DecodeForLog(byte[] bytes, string contentType)
         {
             if (bytes == null || bytes.Length == 0)
