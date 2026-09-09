@@ -10,24 +10,13 @@ using Microsoft.Extensions.Options;
 
 namespace CoolingOffEmailRunnerCloasProxyAPI.Controllers;
 
-/// <summary>
-/// .NET 8 API port of the old WCF <c>CloasProxyService</c>: takes the raw
-/// request body (a CLOAS SOAP/XML envelope), forwards it unchanged - together
-/// with the incoming <c>Content-Type</c> and <c>SOAPAction</c> headers - to the
-/// configured CLOAS <c>.svc</c> target, and streams the target's response
-/// (status code, content type and body) straight back to the caller.
-///
-/// The only thing that changed versus the WCF version is the front door:
-/// <c>POST /api/cloas</c> instead of <c>POST /CloasService.svc</c>.
-/// </summary>
 [ApiController]
 [Route("api/cloas")]
 public sealed class CloasProxyController : ControllerBase
 {
-    /// <summary>Name of the named <see cref="HttpClient"/> registered in Program.cs.</summary>
     public const string HttpClientName = "cloas";
 
-    private const long MaxBodyBytes = 52_428_800; // 50 MB, same as the WCF Web.config limits.
+    private const long MaxBodyBytes = 52_428_800;
 
     private static readonly ILog Log = LogManager.GetLogger(typeof(CloasProxyController));
 
@@ -40,12 +29,6 @@ public sealed class CloasProxyController : ControllerBase
         _options = options.Value;
     }
 
-    /// <summary>
-    /// Forward a CLOAS request through the proxy. Send the SOAP envelope as the
-    /// raw request body with <c>Content-Type: text/xml</c> and the appropriate
-    /// <c>SOAPAction</c> header - exactly what CoolingOffEmailRunnerCloasProxyConsoleTest
-    /// posts today, just to <c>/api/cloas</c> rather than <c>/CloasService.svc</c>.
-    /// </summary>
     [HttpPost]
     [RawXmlBody]
     [RequestSizeLimit(MaxBodyBytes)]
@@ -164,7 +147,6 @@ public sealed class CloasProxyController : ControllerBase
             bodyText);
     }
 
-    // Flattens request-level and content-level headers into one indented block.
     private static string FormatHeaders(HttpHeaders? headers, HttpHeaders? contentHeaders)
     {
         var lines = new List<string>();

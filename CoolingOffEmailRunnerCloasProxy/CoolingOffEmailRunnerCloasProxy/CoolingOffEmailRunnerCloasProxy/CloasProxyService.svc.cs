@@ -30,7 +30,6 @@ namespace CoolingOffEmailRunnerCloasProxy
 
         public async Task<Stream> Process(Stream requestBody)
         {
-            
             var outgoingResponse = WebOperationContext.Current.OutgoingResponse;
 
             var incoming = SnapshotIncomingHeaders();
@@ -51,7 +50,6 @@ namespace CoolingOffEmailRunnerCloasProxy
                     "CLOAS proxy is not configured (missing CloasProxy.TargetServiceUrl).");
             }
 
-        
             byte[] requestBytes = new byte[0];
             if (requestBody != null)
             {
@@ -62,7 +60,6 @@ namespace CoolingOffEmailRunnerCloasProxy
                 }
             }
 
-           
             var requestText = DecodeForLog(requestBytes, contentType);
 
             var stopwatch = Stopwatch.StartNew();
@@ -172,7 +169,6 @@ namespace CoolingOffEmailRunnerCloasProxy
                 Log.Warn("Could not read HttpRequestMessageProperty headers.", ex);
             }
 
-            // 3. Last resort: the WebHttp operation context.
             try
             {
                 var webHeaders = WebOperationContext.Current?.IncomingRequest.Headers;
@@ -229,8 +225,6 @@ namespace CoolingOffEmailRunnerCloasProxy
                 bodyText);
         }
 
-        // Flattens request-level and content-level headers into one indented,
-        // multi-value-aware block for the log.
         private static string FormatHeaders(
             System.Net.Http.Headers.HttpHeaders headers,
             System.Net.Http.Headers.HttpHeaders contentHeaders)

@@ -8,25 +8,20 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// log4net - same rolling-file appender/pattern as the rest of the solution.
 var log4NetConfig = new FileInfo(Path.Combine(AppContext.BaseDirectory, "log4net.config"));
 log4net.Config.XmlConfigurator.ConfigureAndWatch(
     LogManager.GetRepository(Assembly.GetEntryAssembly()!), log4NetConfig);
 
-// CloasProxy:* settings (target .svc URL, timeout).
 builder.Services.Configure<CloasProxyOptions>(
     builder.Configuration.GetSection(CloasProxyOptions.SectionName));
 var proxyOptions = builder.Configuration.GetSection(CloasProxyOptions.SectionName)
     .Get<CloasProxyOptions>() ?? new CloasProxyOptions();
 
-// One pooled HttpClient for the forwarded calls, timeout from config.
 builder.Services.AddHttpClient(CloasProxyController.HttpClientName, client =>
 {
     client.Timeout = TimeSpan.FromSeconds(proxyOptions.TimeoutSeconds);
 });
 
-// Match the 50 MB request headroom the WCF proxy allowed (Web.config
-// maxAllowedContentLength / maxReceivedMessageSize = 52428800).
 builder.Services.Configure<KestrelServerOptions>(o =>
     o.Limits.MaxRequestBodySize = 52_428_800);
 builder.Services.Configure<IISServerOptions>(o =>
@@ -47,7 +42,6 @@ builder.Services.AddSwaggerGen(c =>
             "target's response is streamed straight back."
     });
 
-    // Surface the controller/action <summary> docs in the Swagger UI.
     var xmlDoc = Path.Combine(AppContext.BaseDirectory,
         $"{Assembly.GetExecutingAssembly().GetName().Name}.xml");
     if (File.Exists(xmlDoc))
@@ -55,14 +49,11 @@ builder.Services.AddSwaggerGen(c =>
         c.IncludeXmlComments(xmlDoc);
     }
 
-    // Give POST /api/cloas a text/xml body editor (it reads the raw stream, so
-    // Swashbuckle would otherwise show no request body).
     c.OperationFilter<RawXmlBodyOperationFilter>();
 });
 
 var app = builder.Build();
 
-// Swagger is enabled in every environment; set Swagger:Enabled=false to turn it off.
 if (app.Configuration.GetValue("Swagger:Enabled", true))
 {
     app.UseSwagger();

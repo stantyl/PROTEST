@@ -4,15 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <!-- Emit the XML doc file so Swagger can surface the controller summaries. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <!--
-      CS1591: don't warn on undocumented public members.
-      NU1902: log4net 2.0.x carries a moderate XXE advisory (GHSA-4f7c-pmjv-c25w)
-      that only bites when the log4net *config* is loaded from an untrusted
-      source - here it is a trusted local file. Pinned to 2.0.15 to stay in
-      step with the rest of the CoolingOffEmailRunner solution.
-    -->
     <NoWarn>$(NoWarn);CS1591;NU1902</NoWarn>
   </PropertyGroup>
 

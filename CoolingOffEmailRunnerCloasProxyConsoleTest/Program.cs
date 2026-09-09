@@ -12,26 +12,10 @@ using log4net.Config;
 
 namespace CoolingOffEmailRunnerCloasProxyConsoleTest
 {
-    // Standalone diagnostic tool: builds the CLOAS SOAP envelope the same way
-    // CoolingOffEmailRunnerConsole's CloasService does - in code, via
-    // BuildSoapEnvelopeWithPlans from an embedded template constant, with no
-    // external template file - POSTs it to a CoolingOffEmailRunnerCloasProxy
-    // IIS deployment (CloasProxy.ServiceUrl in App.config), and logs what came
-    // back, so the proxy's data integration can be validated without running
-    // the full email job.
     internal static class Program
     {
         private static readonly ILog Log = LogManager.GetLogger(typeof(Program));
 
-        // Kept in step (bar the {PLACEHOLDERS}) with the template embedded in
-        // CoolingOffEmailRunnerConsole/Services/CloasService.cs, so the request
-        // built here matches what CloasService.BuildSoapEnvelopeWithPlans sends
-        // through the proxy.
-        //
-        // One deliberate difference: the soap prefix is declared here with
-        // xmlns:soap=. CloasService currently writes xmlns= on <soap:Envelope>,
-        // which leaves the soap: prefix undeclared and the envelope not
-        // well-formed XML - the same fix is worth applying there.
         private const string SoapEnvelopeTemplate =
 @"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:xsi=""{XSI_NAMESPACE}"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
@@ -89,9 +73,6 @@ namespace CoolingOffEmailRunnerCloasProxyConsoleTest
             {
                 var soapEnvelope = BuildSoapEnvelopeWithPlans(options, options.PlanIds);
 
-                // Fail fast (locally, before any network call) if the envelope is
-                // not well-formed - a broken template constant is the most likely
-                // reason a proxy round-trip fails, and this pins it down.
                 try
                 {
                     XDocument.Parse(soapEnvelope);
@@ -150,8 +131,6 @@ namespace CoolingOffEmailRunnerCloasProxyConsoleTest
             }
         }
 
-        // Mirrors CloasService.BuildSoapEnvelopeWithPlans: pure string
-        // substitution into the embedded template constant, no file I/O.
         private static string BuildSoapEnvelopeWithPlans(CloasProxyTestOptions options, List<string> planIds)
         {
             var policiesXml = string.Join("\n", planIds.Select(p =>
@@ -168,8 +147,6 @@ namespace CoolingOffEmailRunnerCloasProxyConsoleTest
                 .Replace("{POLICIES}", policiesXml);
         }
 
-        // Mirrors CloasService.ExecuteSingleBatchRequestAsync: POST the envelope
-        // as text/xml with the SOAPAction header, read the whole response back.
         private static async Task<ProxyCallResult> ExecuteSingleRequestAsync(
             CloasProxyTestOptions options, string soapEnvelope)
         {
@@ -196,10 +173,6 @@ namespace CoolingOffEmailRunnerCloasProxyConsoleTest
             }
         }
 
-        // Best-effort parse of the CLOAS response shape, purely for readable
-        // console/log output - it does not need to be exhaustive since the
-        // raw body above is always printed too. Kept aligned with
-        // CloasService.ParseSoapResponse.
         private static void PrintParsedSummary(string responseXml, CloasProxyTestOptions options)
         {
             try

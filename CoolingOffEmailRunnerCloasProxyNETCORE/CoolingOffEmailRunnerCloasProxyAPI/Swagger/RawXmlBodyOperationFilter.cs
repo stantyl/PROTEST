@@ -4,14 +4,6 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace CoolingOffEmailRunnerCloasProxyAPI.Swagger;
 
-/// <summary>
-/// The proxy action reads the raw request stream instead of a bound parameter,
-/// so Swashbuckle emits no request body for it and the Swagger UI shows no
-/// editor. This filter attaches a <c>text/xml</c> string body (pre-filled with a
-/// sample CLOAS envelope) to any action decorated with
-/// <see cref="RawXmlBodyAttribute"/>, so the SOAP envelope can be pasted and
-/// sent straight from <c>/swagger</c>.
-/// </summary>
 public sealed class RawXmlBodyOperationFilter : IOperationFilter
 {
     private const string SampleEnvelope =
@@ -79,6 +71,5 @@ public sealed class RawXmlBodyOperationFilter : IOperationFilter
     }
 }
 
-/// <summary>Marks an action whose request body is a raw XML stream (see <see cref="RawXmlBodyOperationFilter"/>).</summary>
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class RawXmlBodyAttribute : Attribute;

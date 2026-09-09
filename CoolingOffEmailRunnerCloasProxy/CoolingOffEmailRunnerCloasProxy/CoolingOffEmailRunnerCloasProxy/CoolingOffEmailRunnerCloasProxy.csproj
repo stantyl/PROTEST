@@ -16,7 +16,6 @@
     <LangVersion>7.3</LangVersion>
     <WcfConfigValidationEnabled>True</WcfConfigValidationEnabled>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <!-- Consume NuGet packages (log4net) via PackageReference rather than packages.config. -->
     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
     <UseIISExpress>true</UseIISExpress>
     <Use64BitIISExpress />
