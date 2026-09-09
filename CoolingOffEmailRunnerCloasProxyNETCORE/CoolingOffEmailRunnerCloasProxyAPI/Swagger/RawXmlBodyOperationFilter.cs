@@ -20,20 +20,23 @@ public sealed class RawXmlBodyOperationFilter : IOperationFilter
 
         var example = new OpenApiString(SampleEnvelope);
 
-        // Set the example on BOTH the media type and the schema, and also as the
-        // schema default: Swagger UI only pre-fills the "Try it out" editor for a
-        // non-JSON body from the schema (example/default), not from the media-type
-        // example alone - so without this the XML text area comes up blank.
-        var mediaType = new OpenApiMediaType
+        // IMPORTANT: hand Swagger UI the sample through `examples` (plural), NOT
+        // `example`. For an xml media type Swagger UI ignores `example` and tries
+        // to *generate* an XML sample from the schema (here just `type: string`),
+        // which fails with "Example cannot be generated; root element name is
+        // undefined". A named entry under `examples` is rendered verbatim and
+        // pre-fills the "Try it out" body editor, so you can just hit Execute.
+        OpenApiMediaType NewMediaType() => new()
         {
-            Schema = new OpenApiSchema
+            Schema = new OpenApiSchema { Type = "string", Format = "xml" },
+            Examples =
             {
-                Type = "string",
-                Format = "xml",
-                Example = example,
-                Default = example
-            },
-            Example = example
+                ["ConsoleTestEnvelope"] = new OpenApiExample
+                {
+                    Summary = "Same envelope CoolingOffEmailRunnerCloasProxyConsoleTest sends",
+                    Value = example
+                }
+            }
         };
 
         operation.RequestBody = new OpenApiRequestBody
@@ -44,9 +47,9 @@ public sealed class RawXmlBodyOperationFilter : IOperationFilter
                 "CoolingOffEmailRunnerCloasProxyConsoleTest sends. Forwarded unchanged to CLOAS.",
             Content =
             {
-                ["text/xml"] = mediaType,
-                ["application/xml"] = mediaType,
-                ["application/soap+xml"] = mediaType
+                ["text/xml"] = NewMediaType(),
+                ["application/xml"] = NewMediaType(),
+                ["application/soap+xml"] = NewMediaType()
             }
         };
 
