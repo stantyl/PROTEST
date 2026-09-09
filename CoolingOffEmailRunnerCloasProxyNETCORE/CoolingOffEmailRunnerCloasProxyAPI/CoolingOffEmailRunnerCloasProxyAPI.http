@@ -1,0 +1,39 @@
+@host = http://localhost:5214
+
+### Health check
+GET {{host}}/
+Accept: text/plain
+
+###
+# Forward a CLOAS request through the proxy.
+#
+# This is the same envelope CoolingOffEmailRunnerCloasProxyConsoleTest builds
+# (method RetrieveCoolingOffDtlsByPlan, plans 1000001..1000003) - posted here
+# as a raw XML body with the SOAPAction header, exactly like the console test,
+# only to /api/cloas instead of /CloasService.svc.
+POST {{host}}/api/cloas
+Content-Type: text/xml; charset=utf-8
+SOAPAction: http://ilfs/Cloas/Policy
+
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <soap:Body>
+        <RetrieveCoolingOffDtlsByPlan xmlns="http://ilfs/Cloas">
+            <methodName>RetrieveCoolingOffDtlsByPlan</methodName>
+            <systemId>AZC</systemId>
+            <userId>123</userId>
+            <systemReference>CCOE</systemReference>
+            <policyRequest xmlns:dbpl="http://ilfs/Cloas/PolicyApi" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+                <dbpl:PolicyRequestData i:type="dbpl:RetrieveCoolingOffDtlsByPlan">
+                    <dbpl:Policies xmlns:d4p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+                        <d4p1:string>1000001</d4p1:string>
+                        <d4p1:string>1000002</d4p1:string>
+                        <d4p1:string>1000003</d4p1:string>
+                    </dbpl:Policies>
+                </dbpl:PolicyRequestData>
+            </policyRequest>
+        </RetrieveCoolingOffDtlsByPlan>
+    </soap:Body>
+</soap:Envelope>
+
+###
