@@ -32,8 +32,11 @@ public sealed class CloasProxyController : ControllerBase
     [HttpPost]
     [RawXmlBody]
     [RequestSizeLimit(MaxBodyBytes)]
-    [Consumes("text/xml", "application/xml", "application/soap+xml", "text/plain")]
-    [Produces("text/xml", "text/plain")]
+    // No [Consumes]: this is a raw pass-through proxy that reads Request.Body
+    // directly (no [FromBody] binding), so it must accept whatever Content-Type
+    // the caller sends and forward it unchanged - exactly like the old WCF
+    // endpoint. A [Consumes] list makes MVC reject any other media type with
+    // 415 Unsupported Media Type *before* the action runs.
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     [ProducesResponseType(StatusCodes.Status502BadGateway)]
