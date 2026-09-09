@@ -62,10 +62,13 @@ set its `CloasProxy.ServiceUrl` App.config value to
 ### Swagger
 
 Swagger UI is at **`/swagger`** and the OpenAPI document at
-`/swagger/v1/swagger.json`, in **every environment**. `POST /api/cloas` gets a
-`text/xml` request-body editor (pre-filled with the sample envelope above) and a
-`SOAPAction` header field, so you can paste an envelope and hit **Execute**
-without leaving the browser.
+`/swagger/v1/swagger.json`, in **every environment**. `POST /api/cloas` opens
+with **Try it out** already enabled and the `text/xml` body editor pre-filled
+with the *exact* envelope `CoolingOffEmailRunnerCloasProxyConsoleTest` sends
+(same element order, namespaces and indentation - see
+[`Swagger/CloasSampleEnvelope.cs`](Swagger/CloasSampleEnvelope.cs)). The
+`SOAPAction` header field is pre-filled with `http://ilfs/Cloas/Policy`, so you
+can just hit **Execute**.
 
 To turn it off (e.g. in production), set `Swagger:Enabled` to `false` in
 `appsettings.json` or as the env var `Swagger__Enabled=false`.

@@ -6,27 +6,8 @@ namespace CoolingOffEmailRunnerCloasProxyAPI.Swagger;
 
 public sealed class RawXmlBodyOperationFilter : IOperationFilter
 {
-    private const string SampleEnvelope =
-@"<?xml version=""1.0"" encoding=""utf-8""?>
-<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
-  <soap:Body>
-    <RetrieveCoolingOffDtlsByPlan xmlns=""http://ilfs/Cloas"">
-      <methodName>RetrieveCoolingOffDtlsByPlan</methodName>
-      <systemId>AZC</systemId>
-      <userId>123</userId>
-      <systemReference>CCOE</systemReference>
-      <policyRequest xmlns:dbpl=""http://ilfs/Cloas/PolicyApi"" xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
-        <dbpl:PolicyRequestData i:type=""dbpl:RetrieveCoolingOffDtlsByPlan"">
-          <dbpl:Policies xmlns:d4p1=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
-            <d4p1:string>1000001</d4p1:string>
-            <d4p1:string>1000002</d4p1:string>
-            <d4p1:string>1000003</d4p1:string>
-          </dbpl:Policies>
-        </dbpl:PolicyRequestData>
-      </policyRequest>
-    </RetrieveCoolingOffDtlsByPlan>
-  </soap:Body>
-</soap:Envelope>";
+    // Exactly the envelope CoolingOffEmailRunnerCloasProxyConsoleTest posts.
+    private const string SampleEnvelope = CloasSampleEnvelope.Xml;
 
     public void Apply(OpenApiOperation operation, OperationFilterContext context)
     {
@@ -37,16 +18,30 @@ public sealed class RawXmlBodyOperationFilter : IOperationFilter
             return;
         }
 
+        var example = new OpenApiString(SampleEnvelope);
+
+        // Set the example on BOTH the media type and the schema, and also as the
+        // schema default: Swagger UI only pre-fills the "Try it out" editor for a
+        // non-JSON body from the schema (example/default), not from the media-type
+        // example alone - so without this the XML text area comes up blank.
         var mediaType = new OpenApiMediaType
         {
-            Schema = new OpenApiSchema { Type = "string", Format = "xml" },
-            Example = new OpenApiString(SampleEnvelope)
+            Schema = new OpenApiSchema
+            {
+                Type = "string",
+                Format = "xml",
+                Example = example,
+                Default = example
+            },
+            Example = example
         };
 
         operation.RequestBody = new OpenApiRequestBody
         {
             Required = true,
-            Description = "Raw CLOAS SOAP envelope.",
+            Description =
+                "Raw CLOAS SOAP envelope - identical in style to what " +
+                "CoolingOffEmailRunnerCloasProxyConsoleTest sends. Forwarded unchanged to CLOAS.",
             Content =
             {
                 ["text/xml"] = mediaType,
@@ -63,9 +58,13 @@ public sealed class RawXmlBodyOperationFilter : IOperationFilter
                 Name = "SOAPAction",
                 In = ParameterLocation.Header,
                 Required = false,
-                Description = "SOAPAction header, forwarded unchanged to CLOAS (e.g. http://ilfs/Cloas/Policy).",
-                Schema = new OpenApiSchema { Type = "string" },
-                Example = new OpenApiString("http://ilfs/Cloas/Policy")
+                Description = "SOAPAction header, forwarded unchanged to CLOAS.",
+                Schema = new OpenApiSchema
+                {
+                    Type = "string",
+                    Default = new OpenApiString(CloasSampleEnvelope.SoapAction)
+                },
+                Example = new OpenApiString(CloasSampleEnvelope.SoapAction)
             });
         }
     }

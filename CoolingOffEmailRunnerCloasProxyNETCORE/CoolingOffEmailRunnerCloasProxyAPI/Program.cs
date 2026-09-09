@@ -61,6 +61,8 @@ if (app.Configuration.GetValue("Swagger:Enabled", true))
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "CoolingOffEmailRunnerCloasProxyAPI v1");
         c.DocumentTitle = "CoolingOffEmailRunnerCloasProxyAPI";
+        // Open "Try it out" straight away so the pre-filled XML body is editable.
+        c.EnableTryItOutByDefault();
     });
 }
 
