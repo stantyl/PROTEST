@@ -18,6 +18,38 @@ public sealed class CloasProxyController : ControllerBase
 
     private const long MaxBodyBytes = 52_428_800;
 
+    // ---------------------------------------------------------------------
+    // TEMPORARY TEST STUB DATA - self-contained, does NOT depend on Swagger.
+    // Known-good CLOAS request (method RetrieveCoolingOffDtlsByPlan, plans
+    // 1000001..1000003) - same style the .NET 4.5.2 console test posts.
+    // Delete this, plus the matching block in Process(), once a real request works.
+    private const string TestStubSoapAction = "http://ilfs/Cloas/Policy";
+
+    private const string TestStubEnvelope =
+        """
+        <?xml version="1.0" encoding="utf-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+            <soap:Body>
+                <RetrieveCoolingOffDtlsByPlan xmlns="http://ilfs/Cloas">
+                    <methodName>RetrieveCoolingOffDtlsByPlan</methodName>
+                    <systemId>AZC</systemId>
+                    <userId>123</userId>
+                    <systemReference>CCOE</systemReference>
+                    <policyRequest xmlns:dbpl="http://ilfs/Cloas/PolicyApi" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+                        <dbpl:PolicyRequestData i:type="dbpl:RetrieveCoolingOffDtlsByPlan">
+                            <dbpl:Policies xmlns:d4p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+                                <d4p1:string>1000001</d4p1:string>
+                                <d4p1:string>1000002</d4p1:string>
+                                <d4p1:string>1000003</d4p1:string>
+                            </dbpl:Policies>
+                        </dbpl:PolicyRequestData>
+                    </policyRequest>
+                </RetrieveCoolingOffDtlsByPlan>
+            </soap:Body>
+        </soap:Envelope>
+        """;
+    // ------------------------- end test stub data -------------------------
+
     private static readonly ILog Log = LogManager.GetLogger(typeof(CloasProxyController));
 
     private readonly IHttpClientFactory _httpClientFactory;
@@ -65,6 +97,26 @@ public sealed class CloasProxyController : ControllerBase
             await Request.Body.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
             requestBytes = buffer.ToArray();
         }
+
+        // ---------------------------------------------------------------------
+        // TEMPORARY TEST STUB - remove / comment out the whole block below (and
+        // the TestStubEnvelope / TestStubSoapAction constants above) once you
+        // have confirmed a real request works.
+        //
+        // When the request body is empty, substitute the hard-coded known-good
+        // CLOAS SOAP envelope and SOAPAction. So you can just do:
+        //     POST /api/cloas   with NO body and NO headers
+        // and the proxy forwards the working message. Copy the XML that shows up
+        // in the log (the "--- request body ---" section) to reuse it later.
+        if (requestBytes.Length == 0)
+        {
+            requestBytes = Encoding.UTF8.GetBytes(TestStubEnvelope);
+            contentType = "text/xml; charset=utf-8";
+            soapAction = TestStubSoapAction;
+            Log.Warn("TEST STUB ACTIVE: request body was empty, forwarding the built-in " +
+                     "hard-coded sample envelope instead.");
+        }
+        // --------------------------- end test stub ----------------------------
 
         var requestText = DecodeForLog(requestBytes, contentType);
 
