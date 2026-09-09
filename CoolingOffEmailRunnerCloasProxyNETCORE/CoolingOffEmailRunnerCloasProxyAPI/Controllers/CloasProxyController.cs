@@ -146,8 +146,7 @@ public sealed class CloasProxyController : ControllerBase
             var responseBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
             stopwatch.Stop();
 
-            var responseContentType =
-                response.Content.Headers.ContentType?.ToString() ?? "text/xml; charset=utf-8";
+            var responseContentType = SanitizeContentType(response.Content.Headers.ContentType?.ToString());
 
             Log.InfoFormat("CLOAS target {0} responded {1} in {2}ms ({3} bytes)",
                 targetUrl, (int)response.StatusCode, stopwatch.ElapsedMilliseconds, responseBytes.Length);
@@ -155,6 +154,11 @@ public sealed class CloasProxyController : ControllerBase
 
             Response.StatusCode = (int)response.StatusCode;
             Response.ContentType = responseContentType;
+            // Set an explicit Content-Length so Kestrel sends the response with a
+            // fixed length instead of falling back to Transfer-Encoding: chunked
+            // (which is what the old WCF proxy did - it returned a fixed-length
+            // MemoryStream, so IIS emitted Content-Length).
+            Response.ContentLength = responseBytes.Length;
             await Response.Body.WriteAsync(responseBytes, cancellationToken).ConfigureAwait(false);
             return new EmptyResult();
         }
@@ -214,6 +218,24 @@ public sealed class CloasProxyController : ControllerBase
 
     private static IEnumerable<KeyValuePair<string, IEnumerable<string>>> AllPairs(HttpHeaders? headers) =>
         headers ?? Enumerable.Empty<KeyValuePair<string, IEnumerable<string>>>();
+
+    // Some CLOAS front-ends (e.g. reverse proxies) return a merged, multi-value
+    // Content-Type such as "application/octet-stream, text/html; charset=utf-8".
+    // That comma-bearing value is not a valid single media type and makes Kestrel
+    // reject the response when it is assigned to Response.ContentType. Fall back
+    // to a sane default and only keep the first media type when several are given.
+    private static string SanitizeContentType(string? contentType)
+    {
+        const string fallback = "text/xml; charset=utf-8";
+
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            return fallback;
+        }
+
+        var first = contentType.Split(',')[0].Trim();
+        return string.IsNullOrEmpty(first) ? fallback : first;
+    }
 
     private static string DecodeForLog(byte[] bytes, string? contentType)
     {
